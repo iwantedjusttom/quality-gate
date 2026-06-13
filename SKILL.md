@@ -29,7 +29,7 @@ Run against the feature branch, with the **issue body as the spec** (design-queu
 The gate returns one of two things, plus a short report.
 
 - **PASS** → the feature is proven. build-loop may now open/keep the PR and slide the card to `in-review`. The gate's report goes on the issue as a comment so the proof is part of the permanent record.
-- **FAIL** → it does **not** advance. The gate writes the specific findings (failing test, broken behavior, the vulnerability) back as fixes for the builder, who addresses them on the same branch and re-runs the gate. Up to **two self-heal rounds** unattended; if it still can't pass, **stop and surface it to Tom** with exactly what's failing and why — that's a real judgment call, not a loop to grind. Don't paper over a genuine failure to make the card move; a stuck card is information.
+- **FAIL** → it does **not** advance. First, **post the findings as a comment on the GitHub issue** so there's a durable record of what failed — one entry per finding, each with the station that caught it (test / verify / code-review / security), a one-sentence root cause, and the **`file:line` location(s)** so the builder or whoever picks it up later knows exactly where to go. That comment is the permanent FAIL record; the same findings are then handed to the builder as fixes on the same branch, who addresses them and re-runs the gate. Up to **two self-heal rounds** unattended; if it still can't pass, **stop and surface it to Tom** with exactly what's failing and why — that's a real judgment call, not a loop to grind. Don't paper over a genuine failure to make the card move; a stuck card is information.
 
 Never advance on a partial pass. "Tests green but security flagged an open RLS hole" is a FAIL.
 

@@ -9,7 +9,7 @@ It spawns a **fresh agent (never the builder)** to:
 3. Run an adversarial `code-review`
 4. Run a two-lens security pass — `security-review` plus `vibe-security` for the AI-introduced vulnerability classes
 
-…then returns a **PASS/FAIL** verdict with a short, readable report. On FAIL it files the findings back as fixes; only a real PASS lets a card reach `in-review`.
+…then returns a **PASS/FAIL** verdict with a short, readable report. On FAIL it files the findings back as fixes; only a real PASS lets a card reach the In-review column.
 
 ## Why it exists
 
@@ -17,7 +17,7 @@ The same agent that writes a bug will write a passing test and call the code sec
 
 ## Triggers
 
-When build-loop finishes an issue and is about to slide it to `in-review`, or when you say: "is this actually tested", "prove it works", "run the quality gate", "verify this branch/PR", "is this secure", "gate this before I merge".
+When build-loop finishes an issue and is about to move it to the In-review column, or when you say: "is this actually tested", "prove it works", "run the quality gate", "verify this branch/PR", "is this secure", "gate this before I merge".
 
 ## Companions
 

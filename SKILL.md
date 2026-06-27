@@ -1,11 +1,11 @@
 ---
 name: quality-gate
-description: The independent proof-of-correctness gate between "built" and "shipped" — the station that makes build-loop ship solid, secure software instead of just moving cards. Use this skill whenever a feature/fix needs to be PROVEN before it advances: when build-loop finishes building an issue and is about to slide it to `in-review`, or when Tom says "is this actually tested", "prove it works", "run the quality gate", "verify this branch/PR", "is this secure", "gate this before I merge", or wants confidence in a change before it ships. It spawns a FRESH agent (never the builder) to write tests against the issue spec, runs the app to observe real behavior, and runs adversarial `code-review` + a two-lens security pass (`security-review` plus `vibe-security` for the AI-introduced vulnerability classes) — then returns a PASS/FAIL verdict with a short, readable report. On FAIL it files the findings back as fixes; only a real PASS lets a card reach `in-review`. Its whole reason to exist: the same agent that writes a bug will write a passing test and call the code secure, so the checker must be independent and adversarial. Companion to build-loop (which calls it) and design-queue (whose issue body is the spec it tests against). It never designs and never decides scope — it only proves.
+description: The independent proof-of-correctness gate between "built" and "shipped" — the station that makes build-loop ship solid, secure software instead of just moving cards. Use this skill whenever a feature/fix needs to be PROVEN before it advances: when build-loop finishes building an issue and is about to move it to the In-review column, or when Tom says "is this actually tested", "prove it works", "run the quality gate", "verify this branch/PR", "is this secure", "gate this before I merge", or wants confidence in a change before it ships. It spawns a FRESH agent (never the builder) to write tests against the issue spec, runs the app to observe real behavior, and runs adversarial `code-review` + a two-lens security pass (`security-review` plus `vibe-security` for the AI-introduced vulnerability classes) — then returns a PASS/FAIL verdict with a short, readable report. On FAIL it files the findings back as fixes; only a real PASS lets a card reach the In-review column. Its whole reason to exist: the same agent that writes a bug will write a passing test and call the code secure, so the checker must be independent and adversarial. Companion to build-loop (which calls it) and design-queue (whose issue body is the spec it tests against). It never designs and never decides scope — it only proves.
 ---
 
 # Quality Gate — prove it before it ships
 
-build-loop moves work; this skill proves it. It is the missing station between **built** and **`in-review`** — the one that asks not "did the agent finish?" but "is this actually correct, secure, and doing what the spec said?" Without it the pipeline optimizes *flow*: a card slides, a PR opens, a label changes — all green, none of it proven. This skill optimizes *truth*. A feature does not reach `in-review` until it has earned it here.
+build-loop moves work; this skill proves it. It is the missing station between **built** and **In-review** — the one that asks not "did the agent finish?" but "is this actually correct, secure, and doing what the spec said?" Without it the pipeline optimizes *flow*: a card slides, a PR opens — all green, none of it proven. This skill optimizes *truth*. A feature does not reach the In-review column until it has earned it here.
 
 ## The one rule everything rests on: the checker is never the builder
 
@@ -16,7 +16,7 @@ The agent that wrote the code will write a test that confirms its own bugs and p
 Run against the feature branch, with the **issue body as the spec** (design-queue wrote it; it says what "correct" means). For each, spawn a fresh sub-agent.
 
 1. **Tests from the spec — not from the code.** A fresh agent reads the *issue spec* (what it should do, its edge cases) and writes tests that assert **that behavior**, deliberately not reading the implementation first so it can't be led into testing the bug as if it were the feature. Then it runs them. Tests that pass by asserting nothing, or that just mirror the implementation, are theater — reject them. If the repo has no test runner yet, this station establishes the minimum one (its own small, real win toward Tom's goal of building the *right* tests).
-2. **`verify` — run it and watch.** Invoke the `verify` skill: actually launch the app and observe the real behavior the issue promised, in a browser/CLI — not an assumption that it works. Behavior observed > behavior assumed.
+2. **`verify` — run it and watch.** Invoke the `verify` skill: actually launch the app and observe the real behavior the issue promised, in a browser/CLI — not an assumption that it works. Behavior observed > behavior assumed. *(Posting desktop screenshots of each UI phase onto the issue is designed but currently **parked** — see UI screenshots — so for now verify the UI by observation, no shots.)*
 3. **`code-review` — adversarial correctness.** Run `code-review` on the diff at a real effort level, framed to hunt for breakage, not to nod. Edge cases, error paths, the regression an innocent change quietly caused.
 4. **Security — two complementary lenses, not vibes.** Run **both** passes in the fresh agent, because they catch different things:
    - **`security-review`** — general adversarial reasoning over the diff's actual attack surface: auth/ownership, input handling, secrets, any boundary the feature touches.
@@ -24,11 +24,21 @@ Run against the feature branch, with the **issue body as the spec** (design-queu
 
    Together they are the security verdict; "looks fine" is not. **Gating rule:** any `vibe-security` finding at **Critical or High** is an automatic FAIL — those are the breach-grade classes (a leaked service key, a $0.01 checkout, a missing RLS policy), not nits. Medium/Low get reported in the verdict and fixed if cheap, but don't have to block on their own.
 
+## UI screenshots — PARKED (no working private-repo uploader on Windows yet)
+
+**The intent (revive when unblocked):** when a feature has a UI surface, the verify station captures a **desktop-width (~1280px)** screenshot at each phase the spec names (empty state → filled form → success → error path) — a headless Playwright shot, `npx playwright …` — and posts them in a collapsible `<details>` dropdown on the issue, on PASS *and* FAIL, so Tom can eyeball the rendered screens while reviewing instead of taking "it works" on faith. **This is parked, not active — don't attempt the upload until a working uploader exists.**
+
+**Why parked:** the app repos are **private**, so images only render inline from GitHub's own `user-attachments` CDN (a plain raw/file URL won't render — the image proxy can't read a private repo). The only programmatic way onto that CDN is a browser-session upload, and on Tom's Windows setup neither tool works unattended:
+- `gh-attach` ships **no Windows binary**.
+- `gh-image` **doesn't support Edge** and **can't read Chrome's cookie while the browser is open**; its only fallback is a full-account `GH_SESSION_TOKEN` (expires ~2 weeks) — a security/maintenance cost Tom declined.
+
+**Revive it when** any of these lands: `gh-attach` ships a Windows build, a small uploader that copies the locked cookie DB (à la `browser_cookie3`) exists, GitHub ships a first-party attachment API ([cli/cli #12960](https://github.com/cli/cli/issues/12960) / [#13256](https://github.com/cli/cli/issues/13256)), or Tom opts into the session-token path. Until then, the gate proves UI behavior the normal way (station 2 `verify`, by observation) and posts **no** screenshots.
+
 ## The verdict — PASS advances, FAIL self-heals then escalates
 
 The gate returns one of two things, plus a short report.
 
-- **PASS** → the feature is proven. build-loop may now open/keep the PR and slide the card to `in-review`. The gate's report goes on the issue as a comment so the proof is part of the permanent record.
+- **PASS** → the feature is proven. build-loop may now open/keep the PR; Tom moves the card to the In-review column. The gate's report goes on the issue as a comment so the proof is part of the permanent record.
 - **FAIL** → it does **not** advance. First, **post the findings as a comment on the GitHub issue** so there's a durable record of what failed — one entry per finding, each with the station that caught it (test / verify / code-review / security), a one-sentence root cause, and the **`file:line` location(s)** so the builder or whoever picks it up later knows exactly where to go. That comment is the permanent FAIL record; the same findings are then handed to the builder as fixes on the same branch, who addresses them and re-runs the gate. Up to **two self-heal rounds** unattended; if it still can't pass, **stop and surface it to Tom** with exactly what's failing and why — that's a real judgment call, not a loop to grind. Don't paper over a genuine failure to make the card move; a stuck card is information.
 
 Never advance on a partial pass. "Tests green but security flagged an open RLS hole" is a FAIL.
@@ -44,7 +54,7 @@ When in doubt on something that touches user data or auth, run the full gate. Wh
 
 ## How build-loop calls it (the seam)
 
-build-loop owns *building*; this skill owns *proving*; they stay separate skills that hand off — same split as design-queue/build-loop. The seam is a single insertion in build-loop's finish step: **build → call quality-gate → on PASS, open the PR + relabel `in-review` + slide the card; on FAIL, fix and re-gate.** build-loop never grades its own build; it delegates that here and trusts the verdict. (One-line hook to add when Tom's ready: between "Build to the spec" and "Finish," run `quality-gate` on the branch and only proceed on PASS.)
+build-loop owns *building*; this skill owns *proving*; they stay separate skills that hand off — same split as design-queue/build-loop. The seam is a single insertion in build-loop's finish step: **build → call quality-gate → on PASS, open the PR (Tom moves the card to In-review); on FAIL, fix and re-gate.** build-loop never grades its own build; it delegates that here and trusts the verdict. (One-line hook to add when Tom's ready: between "Build to the spec" and "Finish," run `quality-gate` on the branch and only proceed on PASS.)
 
 ## Standalone use
 
